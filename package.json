@@ -1,0 +1,24 @@
+{
+  "author": "Termina1",
+  "name": "node-amdify",
+  "description": "Converts node.js code to amd style modules, so it can be used in a browser",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Termina1/node-amdify.git"
+  },
+  "main": "main.js",
+  "engines": {
+    "node": ">=0.6.1"
+  },
+  "devDependencies": {
+    "mocha": ">=0",
+    "chai": ">=0",
+    "sinon-chai": ">=0",
+    "node-promise": "*",
+    "detective": "git+ssh://git@github.com:Termina1/node-detective.git",
+    "sugar": "*",
+    "coffee-fast-compile": "*",
+    "through": "*"
+  }
+}
