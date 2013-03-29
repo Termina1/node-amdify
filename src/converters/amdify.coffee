@@ -2,10 +2,10 @@ through = require 'through'
 detective = require 'detective'
 path = require 'path'
 
-wrapCode = (data, {resolved, resolvedModules, base}) ->
+wrapCode = (data, {resolved, resolvedModules, moduleName}) ->
   resolvedModules = ['module', 'exports', 'require'].concat resolvedModules
   resolvedVars = ['module', 'exports', 'require'].concat resolved.map (el) -> el.variable
-  code = "define('#{base}', [#{resolvedModules.map((el) -> "'#{el}'").join(', ')}], function(#{resolvedVars.join(', ')}) {\n" + data.code + "\n}";
+  code = "define('#{moduleName}', [#{resolvedModules.map((el) -> "'#{el}'").join(', ')}], function(#{resolvedVars.join(', ')}) {\n" + data.code + "\n}";
   code
 
 trackPaths = (baseDir, data) ->
@@ -14,7 +14,7 @@ trackPaths = (baseDir, data) ->
   base = '.' unless base
   resolved = detective.find(data.code, includeLeft: true).strings.filter (el) -> el.module and el.module.substr(0, 2) is './'
   resolvedModules = resolved.map (resolve) -> path.resolve(baseDir + '/' + resolve.module).replace(baseDir, '')
-  resolvedModules: resolvedModules, resolved: resolved, moduleName: name, base: base
+  resolvedModules: resolvedModules, resolved: resolved, moduleName: name
 
 module.exports = (baseDir) ->
   baseDir = path.resolve(baseDir) + '/'

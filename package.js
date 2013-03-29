@@ -1,4 +1,4 @@
-define('converters', ['module', 'exports', 'require'], function(module, exports, require) {
+define('converters/amdify', ['module', 'exports', 'require'], function(module, exports, require) {
 (function() {
   var detective, path, through, trackPaths, wrapCode;
 
@@ -9,14 +9,14 @@ define('converters', ['module', 'exports', 'require'], function(module, exports,
   path = require('path');
 
   wrapCode = function(data, _arg) {
-    var base, code, resolved, resolvedModules, resolvedVars;
+    var code, moduleName, resolved, resolvedModules, resolvedVars;
 
-    resolved = _arg.resolved, resolvedModules = _arg.resolvedModules, base = _arg.base;
+    resolved = _arg.resolved, resolvedModules = _arg.resolvedModules, moduleName = _arg.moduleName;
     resolvedModules = ['module', 'exports', 'require'].concat(resolvedModules);
     resolvedVars = ['module', 'exports', 'require'].concat(resolved.map(function(el) {
       return el.variable;
     }));
-    code = ("define('" + base + "', [" + (resolvedModules.map(function(el) {
+    code = ("define('" + moduleName + "', [" + (resolvedModules.map(function(el) {
       return "'" + el + "'";
     }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + data.code + "\n}";
     return code;
@@ -41,8 +41,7 @@ define('converters', ['module', 'exports', 'require'], function(module, exports,
     return {
       resolvedModules: resolvedModules,
       resolved: resolved,
-      moduleName: name,
-      base: base
+      moduleName: name
     };
   };
 
@@ -67,7 +66,7 @@ define('converters', ['module', 'exports', 'require'], function(module, exports,
 
 }).call(this);
 
-}define('converters', ['module', 'exports', 'require'], function(module, exports, require) {
+}define('converters/optimize', ['module', 'exports', 'require'], function(module, exports, require) {
 (function() {
   var buildPack, fs, getDeps, through;
 
@@ -147,7 +146,7 @@ define('converters', ['module', 'exports', 'require'], function(module, exports,
 
 }).call(this);
 
-}define('.', ['module', 'exports', 'require', 'converters/amdify', 'converters/optimize'], function(module, exports, require, amdify, optimize) {
+}define('main', ['module', 'exports', 'require', 'converters/amdify', 'converters/optimize'], function(module, exports, require, amdify, optimize) {
 (function() {
   var amdify, fast, optimize, process;
 
