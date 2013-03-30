@@ -1,25 +1,77 @@
-define('main', ['module', 'exports', 'require', 'converters/amdify', 'converters/optimize'], function(module, exports, require) {
+define('converters/optimize', ['module', 'exports', 'require'], function(module, exports, require) {
 (function() {
-  var amdify, fast, optimize, process;
+  var buildPack, fs, getDeps, through;
 
-  fast = require('coffee-fast-compile');
+  through = require('through');
 
-  amdify = require('converters/amdify').getPipe;
+  require('sugar');
 
-  optimize = require('converters/optimize');
+  fs = require('fs');
 
-  process = function(coffeeStream, pack, cb) {
-    var amdifyPipe, optimizePipe;
+  getDeps = function(module, deps, order) {
+    var dep, moduleDeps, _i, _len;
 
-    amdifyPipe = amdify('./src');
-    optimizePipe = optimize(pack, cb);
-    return coffeeStream.pipe(amdifyPipe).pipe(optimizePipe);
+    moduleDeps = deps[module];
+    if (moduleDeps && order.indexOf(module) < 0) {
+      for (_i = 0, _len = moduleDeps.length; _i < _len; _i++) {
+        dep = moduleDeps[_i];
+        if (!(order.indexOf(dep) < 0)) {
+          continue;
+        }
+        order.push(dep);
+        order = getDeps(dep, deps, order);
+      }
+    }
+    return order;
   };
 
-  module.exports = {
-    watch: function(dir, output, pack, cb) {
-      return process(fast.watch(dir, output), pack, cb);
+  buildPack = function(pack, deps, code, cb) {
+    var gencode, module, modules, order, _i, _j, _len, _len1, _ref,
+      _this = this;
+
+    order = [];
+    modules = Object.keys(deps);
+    for (_i = 0, _len = modules.length; _i < _len; _i++) {
+      module = modules[_i];
+      order.push(module);
+      order = getDeps(module, deps, order);
     }
+    gencode = "";
+    _ref = order.reverse();
+    for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+      module = _ref[_j];
+      gencode += code[module];
+    }
+    return fs.writeFile(pack, gencode, function() {
+      return cb(pack);
+    });
+  };
+
+  module.exports = function(pack, cb) {
+    var code, dependencies;
+
+    dependencies = {};
+    code = {};
+    return through(function(data) {
+      var _name, _ref,
+        _this = this;
+
+      if (data === 'compiled') {
+        this.pause();
+        return buildPack(pack, dependencies, code, function() {
+          _this.resume();
+          if (typeof cb === 'function') {
+            return cb();
+          }
+        });
+      } else {
+        code[data.module] = data.code;
+        if ((_ref = dependencies[_name = data.module]) == null) {
+          dependencies[_name] = [];
+        }
+        return dependencies[data.module] = dependencies[data.module].concat(data.deps).unique();
+      }
+    });
   };
 
 }).call(this);
@@ -96,79 +148,28 @@ define('converters/amdify', ['module', 'exports', 'require'], function(module, e
 }).call(this);
 
 }
-define('converters/optimize', ['module', 'exports', 'require'], function(module, exports, require) {
+define('main', ['module', 'exports', 'require', 'converters/amdify', 'converters/optimize'], function(module, exports, require) {
 (function() {
-  var buildPack, fs, getDeps, through;
+  var amdify, fast, optimize, process;
 
-  through = require('through');
+  fast = require('coffee-fast-compile');
 
-  require('sugar');
+  amdify = require('converters/amdify').getPipe;
 
-  fs = require('fs');
+  optimize = require('converters/optimize');
 
-  getDeps = function(module, deps, order) {
-    var dep, moduleDeps, _i, _len;
+  process = function(coffeeStream, pack, cb) {
+    var amdifyPipe, optimizePipe;
 
-    moduleDeps = deps[module];
-    if (moduleDeps && order.indexOf(module) < 0) {
-      for (_i = 0, _len = moduleDeps.length; _i < _len; _i++) {
-        dep = moduleDeps[_i];
-        if (!(order.indexOf(dep) < 0)) {
-          continue;
-        }
-        order.push(dep);
-        order = getDeps(dep, deps, order);
-      }
-    }
-    return order;
+    amdifyPipe = amdify('./src');
+    optimizePipe = optimize(pack, cb);
+    return coffeeStream.pipe(amdifyPipe).pipe(optimizePipe);
   };
 
-  buildPack = function(pack, deps, code, cb) {
-    var gencode, module, modules, order, _i, _j, _len, _len1,
-      _this = this;
-
-    order = [];
-    modules = Object.keys(deps);
-    for (_i = 0, _len = modules.length; _i < _len; _i++) {
-      module = modules[_i];
-      order.push(module);
-      order = getDeps(module, deps, order);
+  module.exports = {
+    watch: function(dir, output, pack, cb) {
+      return process(fast.watch(dir, output), pack, cb);
     }
-    gencode = "";
-    for (_j = 0, _len1 = order.length; _j < _len1; _j++) {
-      module = order[_j];
-      gencode += code[module];
-    }
-    return fs.writeFile(pack, gencode, function() {
-      return cb(pack);
-    });
-  };
-
-  module.exports = function(pack, cb) {
-    var code, dependencies;
-
-    dependencies = {};
-    code = {};
-    return through(function(data) {
-      var _name, _ref,
-        _this = this;
-
-      if (data === 'compiled') {
-        this.pause();
-        return buildPack(pack, dependencies, code, function() {
-          _this.resume();
-          if (typeof cb === 'function') {
-            return cb();
-          }
-        });
-      } else {
-        code[data.module] = data.code;
-        if ((_ref = dependencies[_name = data.module]) == null) {
-          dependencies[_name] = [];
-        }
-        return dependencies[data.module] = dependencies[data.module].concat(data.deps).unique();
-      }
-    });
   };
 
 }).call(this);

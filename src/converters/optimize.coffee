@@ -17,7 +17,7 @@ buildPack = (pack, deps, code, cb) ->
     order.push module
     order = getDeps module, deps, order
   gencode = ""
-  for module in order
+  for module in order.reverse()
     gencode += code[module]
   fs.writeFile pack, gencode, => cb pack
 
