@@ -2,10 +2,10 @@ through = require 'through'
 detective = require 'detective'
 path = require 'path'
 
-wrapCode = (data, {resolvedVars, resolvedModules, moduleName}) ->
+wrapCode = (data, {resolvedVars, resolvedModules, moduleName, code}) ->
   resolvedModules = ['module', 'exports', 'require'].concat resolvedModules
-  resolvedVars = ['module', 'exports', 'require'].concat resolvedVars
-  code = "define('#{moduleName}', [#{resolvedModules.map((el) -> "'#{el}'").join(', ')}], function(#{resolvedVars.join(', ')}) {\n" + data.code + "\n}\n";
+  resolvedVars = ['module', 'exports', 'require']
+  code = "define('#{moduleName}', [#{resolvedModules.map((el) -> "'#{el}'").join(', ')}], function(#{resolvedVars.join(', ')}) {\n" + code + "\n}\n";
   code
 
 
@@ -14,10 +14,12 @@ trackPaths = (baseDir, data) ->
   baseDir = path.resolve(baseDir)
   modulePath = path.relative baseDir, path.dirname data.file
   moduleName = path.join modulePath, path.basename data.file, path.extname data.file
-  resolved = detective.find(data.code, includeLeft: true).strings.filter (el) -> el.module and el.module.match(/^(.\/|..\/)/)
-  resolvedModules = resolved.map (el) -> path.normalize path.relative baseDir, path.join baseDir, modulePath, el.module
-  resolvedVars = resolved.map (el) -> el.variable
-  resolvedModules: resolvedModules, moduleName: moduleName, resolvedVars: resolvedVars
+  resolved = detective(data.code).filter (el) -> el and el.match(/^(.\/|..\/)/)
+  code = data.code
+  resolvedModules = resolved.map (el) -> path.normalize path.relative baseDir, path.join baseDir, modulePath, el
+  for el, i in resolved
+    code = code.replace el, resolvedModules[i]
+  resolvedModules: resolvedModules, moduleName: moduleName, code: code
 
 module.exports = 
   getPipe: (baseDir) ->

@@ -1,31 +1,31 @@
-undefineddefine('main', ['module', 'exports', 'require', 'converters/optimize'], function(module, exports, require, optimize) {
+define('main', ['module', 'exports', 'require', 'converters/amdify', 'converters/optimize'], function(module, exports, require) {
 (function() {
   var amdify, fast, optimize, process;
 
   fast = require('coffee-fast-compile');
 
-  amdify = require('./converters/amdify').getPipe;
+  amdify = require('converters/amdify').getPipe;
 
-  optimize = require('./converters/optimize');
+  optimize = require('converters/optimize');
 
-  process = function(coffeeStream, pack) {
+  process = function(coffeeStream, pack, cb) {
     var amdifyPipe, optimizePipe;
 
     amdifyPipe = amdify('./src');
-    optimizePipe = optimize(pack);
+    optimizePipe = optimize(pack, cb);
     return coffeeStream.pipe(amdifyPipe).pipe(optimizePipe);
   };
 
   module.exports = {
-    watch: function(dir, output, pack) {
-      return process(fast.watch(dir, output), pack);
+    watch: function(dir, output, pack, cb) {
+      return process(fast.watch(dir, output), pack, cb);
     }
   };
 
 }).call(this);
 
 }
-define('convertersamdify', ['module', 'exports', 'require'], function(module, exports, require) {
+define('converters/amdify', ['module', 'exports', 'require'], function(module, exports, require) {
 (function() {
   var detective, path, through, trackPaths, wrapCode;
 
@@ -38,36 +38,36 @@ define('convertersamdify', ['module', 'exports', 'require'], function(module, ex
   wrapCode = function(data, _arg) {
     var code, moduleName, resolvedModules, resolvedVars;
 
-    resolvedVars = _arg.resolvedVars, resolvedModules = _arg.resolvedModules, moduleName = _arg.moduleName;
+    resolvedVars = _arg.resolvedVars, resolvedModules = _arg.resolvedModules, moduleName = _arg.moduleName, code = _arg.code;
     resolvedModules = ['module', 'exports', 'require'].concat(resolvedModules);
-    resolvedVars = ['module', 'exports', 'require'].concat(resolvedVars);
+    resolvedVars = ['module', 'exports', 'require'];
     code = ("define('" + moduleName + "', [" + (resolvedModules.map(function(el) {
       return "'" + el + "'";
-    }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + data.code + "\n}\n";
+    }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + code + "\n}\n";
     return code;
   };
 
   trackPaths = function(baseDir, data) {
-    var moduleName, modulePath, resolved, resolvedModules, resolvedVars;
+    var code, el, i, moduleName, modulePath, resolved, resolvedModules, _i, _len;
 
     baseDir = path.resolve(baseDir);
     modulePath = path.relative(baseDir, path.dirname(data.file));
-    moduleName = modulePath + path.basename(data.file, path.extname(data.file));
-    resolved = detective.find(data.code, {
-      includeLeft: true
-    }).strings.filter(function(el) {
-      return el.module && el.module.match(/^(.\/|..\/)/);
+    moduleName = path.join(modulePath, path.basename(data.file, path.extname(data.file)));
+    resolved = detective(data.code).filter(function(el) {
+      return el && el.match(/^(.\/|..\/)/);
     });
+    code = data.code;
     resolvedModules = resolved.map(function(el) {
-      return path.normalize(path.relative(baseDir, baseDir + modulePath + '/' + el.module));
+      return path.normalize(path.relative(baseDir, path.join(baseDir, modulePath, el)));
     });
-    resolvedVars = resolved.map(function(el) {
-      return el.variable;
-    });
+    for (i = _i = 0, _len = resolved.length; _i < _len; i = ++_i) {
+      el = resolved[i];
+      code = code.replace(el, resolvedModules[i]);
+    }
     return {
       resolvedModules: resolvedModules,
       moduleName: moduleName,
-      resolvedVars: resolvedVars
+      code: code
     };
   };
 
@@ -96,7 +96,7 @@ define('convertersamdify', ['module', 'exports', 'require'], function(module, ex
 }).call(this);
 
 }
-define('convertersoptimize', ['module', 'exports', 'require'], function(module, exports, require) {
+define('converters/optimize', ['module', 'exports', 'require'], function(module, exports, require) {
 (function() {
   var buildPack, fs, getDeps, through;
 
@@ -106,46 +106,37 @@ define('convertersoptimize', ['module', 'exports', 'require'], function(module, 
 
   fs = require('fs');
 
-  getDeps = function(module, deps) {
-    var dep, moduleDeps, order, _i, _len;
+  getDeps = function(module, deps, order) {
+    var dep, moduleDeps, _i, _len;
 
-    order = [];
     moduleDeps = deps[module];
-    if (!moduleDeps) {
-      return [];
-    } else {
+    if (moduleDeps && order.indexOf(module) < 0) {
       for (_i = 0, _len = moduleDeps.length; _i < _len; _i++) {
         dep = moduleDeps[_i];
-        order = order.concat(getDeps(dep, deps));
+        if (!(order.indexOf(dep) < 0)) {
+          continue;
+        }
         order.push(dep);
+        order = getDeps(dep, deps, order);
       }
-      return order;
     }
+    return order;
   };
 
   buildPack = function(pack, deps, code, cb) {
-    var dep, gencode, module, order, _i, _len,
+    var gencode, module, modules, order, _i, _j, _len, _len1,
       _this = this;
 
     order = [];
-    for (module in deps) {
-      dep = deps[module];
-      if (!(order.indexOf(module) < 0)) {
-        continue;
-      }
-      order = order.concat(getDeps(module, deps));
-      if (order.indexOf(module) >= 0) {
-        throw new Error('You have circular dependency!');
-      } else {
-        order.push(module);
-      }
+    modules = Object.keys(deps);
+    for (_i = 0, _len = modules.length; _i < _len; _i++) {
+      module = modules[_i];
+      order.push(module);
+      order = getDeps(module, deps, order);
     }
     gencode = "";
-    for (_i = 0, _len = order.length; _i < _len; _i++) {
-      module = order[_i];
-      if (typeof code[module] === 'undefined') {
-        console.log(module);
-      }
+    for (_j = 0, _len1 = order.length; _j < _len1; _j++) {
+      module = order[_j];
       gencode += code[module];
     }
     return fs.writeFile(pack, gencode, function() {
@@ -153,7 +144,7 @@ define('convertersoptimize', ['module', 'exports', 'require'], function(module, 
     });
   };
 
-  module.exports = function(pack) {
+  module.exports = function(pack, cb) {
     var code, dependencies;
 
     dependencies = {};
@@ -165,7 +156,10 @@ define('convertersoptimize', ['module', 'exports', 'require'], function(module, 
       if (data === 'compiled') {
         this.pause();
         return buildPack(pack, dependencies, code, function() {
-          return _this.resume();
+          _this.resume();
+          if (typeof cb === 'function') {
+            return cb();
+          }
         });
       } else {
         code[data.module] = data.code;

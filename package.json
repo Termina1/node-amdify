@@ -16,7 +16,7 @@
     "chai": ">=0",
     "sinon-chai": ">=0",
     "node-promise": "*",
-    "detective": "git+ssh://git@github.com:Termina1/node-detective.git",
+    "detective": "*",
     "sugar": "*",
     "coffee-fast-compile": "*",
     "through": "*",
