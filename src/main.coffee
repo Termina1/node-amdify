@@ -1,5 +1,5 @@
 fast = require 'coffee-fast-compile'
-amdify = require './converters/amdify'
+amdify = require('./converters/amdify').getPipe
 optimize = require './converters/optimize'
 
 process = (coffeeStream, pack) ->

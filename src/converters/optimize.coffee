@@ -23,6 +23,7 @@ buildPack = (pack, deps, code, cb) ->
       order.push module
   gencode = ""
   for module in order
+    console.log module if typeof code[module] is 'undefined'
     gencode += code[module]
   fs.writeFile pack, gencode, => cb pack
 

@@ -1,4 +1,31 @@
-define('converters/amdify', ['module', 'exports', 'require'], function(module, exports, require) {
+undefineddefine('main', ['module', 'exports', 'require', 'converters/optimize'], function(module, exports, require, optimize) {
+(function() {
+  var amdify, fast, optimize, process;
+
+  fast = require('coffee-fast-compile');
+
+  amdify = require('./converters/amdify').getPipe;
+
+  optimize = require('./converters/optimize');
+
+  process = function(coffeeStream, pack) {
+    var amdifyPipe, optimizePipe;
+
+    amdifyPipe = amdify('./src');
+    optimizePipe = optimize(pack);
+    return coffeeStream.pipe(amdifyPipe).pipe(optimizePipe);
+  };
+
+  module.exports = {
+    watch: function(dir, output, pack) {
+      return process(fast.watch(dir, output), pack);
+    }
+  };
+
+}).call(this);
+
+}
+define('convertersamdify', ['module', 'exports', 'require'], function(module, exports, require) {
 (function() {
   var detective, path, through, trackPaths, wrapCode;
 
@@ -9,64 +36,67 @@ define('converters/amdify', ['module', 'exports', 'require'], function(module, e
   path = require('path');
 
   wrapCode = function(data, _arg) {
-    var code, moduleName, resolved, resolvedModules, resolvedVars;
+    var code, moduleName, resolvedModules, resolvedVars;
 
-    resolved = _arg.resolved, resolvedModules = _arg.resolvedModules, moduleName = _arg.moduleName;
+    resolvedVars = _arg.resolvedVars, resolvedModules = _arg.resolvedModules, moduleName = _arg.moduleName;
     resolvedModules = ['module', 'exports', 'require'].concat(resolvedModules);
-    resolvedVars = ['module', 'exports', 'require'].concat(resolved.map(function(el) {
-      return el.variable;
-    }));
+    resolvedVars = ['module', 'exports', 'require'].concat(resolvedVars);
     code = ("define('" + moduleName + "', [" + (resolvedModules.map(function(el) {
       return "'" + el + "'";
-    }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + data.code + "\n}";
+    }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + data.code + "\n}\n";
     return code;
   };
 
   trackPaths = function(baseDir, data) {
-    var base, name, resolved, resolvedModules;
+    var moduleName, modulePath, resolved, resolvedModules, resolvedVars;
 
-    name = path.resolve(data.file).replace(baseDir, '').replace(/\.\w+$/, '');
-    base = name.split('/').slice(0, -1).join('/');
-    if (!base) {
-      base = '.';
-    }
+    baseDir = path.resolve(baseDir);
+    modulePath = path.relative(baseDir, path.dirname(data.file));
+    moduleName = modulePath + path.basename(data.file, path.extname(data.file));
     resolved = detective.find(data.code, {
       includeLeft: true
     }).strings.filter(function(el) {
-      return el.module && el.module.substr(0, 2) === './';
+      return el.module && el.module.match(/^(.\/|..\/)/);
     });
-    resolvedModules = resolved.map(function(resolve) {
-      return path.resolve(baseDir + '/' + resolve.module).replace(baseDir, '');
+    resolvedModules = resolved.map(function(el) {
+      return path.normalize(path.relative(baseDir, baseDir + modulePath + '/' + el.module));
+    });
+    resolvedVars = resolved.map(function(el) {
+      return el.variable;
     });
     return {
       resolvedModules: resolvedModules,
-      resolved: resolved,
-      moduleName: name
+      moduleName: moduleName,
+      resolvedVars: resolvedVars
     };
   };
 
-  module.exports = function(baseDir) {
-    baseDir = path.resolve(baseDir) + '/';
-    return through(function(data) {
-      var result, wrappedCode;
+  module.exports = {
+    getPipe: function(baseDir) {
+      return through(function(data) {
+        var result, wrappedCode;
 
-      if (data === 'compiled') {
-        return this.queue(data);
-      } else {
-        result = trackPaths(baseDir, data);
-        wrappedCode = wrapCode(data, result);
-        return this.queue({
-          code: wrappedCode,
-          module: result.moduleName,
-          deps: result.resolvedModules
-        });
-      }
-    });
+        if (data === 'compiled') {
+          return this.queue(data);
+        } else {
+          result = trackPaths(baseDir, data);
+          wrappedCode = wrapCode(data, result);
+          return this.queue({
+            code: wrappedCode,
+            module: result.moduleName,
+            deps: result.resolvedModules
+          });
+        }
+      });
+    },
+    trackPaths: trackPaths,
+    wrapCode: wrapCode
   };
 
 }).call(this);
 
-}define('converters/optimize', ['module', 'exports', 'require'], function(module, exports, require) {
+}
+define('convertersoptimize', ['module', 'exports', 'require'], function(module, exports, require) {
 (function() {
   var buildPack, fs, getDeps, through;
 
@@ -113,6 +143,9 @@ define('converters/amdify', ['module', 'exports', 'require'], function(module, e
     gencode = "";
     for (_i = 0, _len = order.length; _i < _len; _i++) {
       module = order[_i];
+      if (typeof code[module] === 'undefined') {
+        console.log(module);
+      }
       gencode += code[module];
     }
     return fs.writeFile(pack, gencode, function() {
@@ -142,32 +175,6 @@ define('converters/amdify', ['module', 'exports', 'require'], function(module, e
         return dependencies[data.module] = dependencies[data.module].concat(data.deps).unique();
       }
     });
-  };
-
-}).call(this);
-
-}define('main', ['module', 'exports', 'require', 'converters/amdify', 'converters/optimize'], function(module, exports, require, amdify, optimize) {
-(function() {
-  var amdify, fast, optimize, process;
-
-  fast = require('coffee-fast-compile');
-
-  amdify = require('./converters/amdify');
-
-  optimize = require('./converters/optimize');
-
-  process = function(coffeeStream, pack) {
-    var amdifyPipe, optimizePipe;
-
-    amdifyPipe = amdify('./src');
-    optimizePipe = optimize(pack);
-    return coffeeStream.pipe(amdifyPipe).pipe(optimizePipe);
-  };
-
-  module.exports = {
-    watch: function(dir, output, pack) {
-      return process(fast.watch(dir, output), pack);
-    }
   };
 
 }).call(this);
