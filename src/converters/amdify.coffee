@@ -5,7 +5,7 @@ path = require 'path'
 wrapCode = (data, {resolvedVars, resolvedModules, moduleName, code}) ->
   resolvedModules = ['module', 'exports', 'require'].concat resolvedModules
   resolvedVars = ['module', 'exports', 'require']
-  code = "define('#{moduleName}', [#{resolvedModules.map((el) -> "'#{el}'").join(', ')}], function(#{resolvedVars.join(', ')}) {\n" + code + "\n}\n";
+  code = "define('#{moduleName}', [#{resolvedModules.map((el) -> "'#{el}'").join(', ')}], function(#{resolvedVars.join(', ')}) {\n" + code + "\n});\n";
   code
 
 

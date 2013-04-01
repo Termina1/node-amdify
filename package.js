@@ -76,7 +76,7 @@ define('converters/optimize', ['module', 'exports', 'require'], function(module,
 
 }).call(this);
 
-}
+});
 define('converters/amdify', ['module', 'exports', 'require'], function(module, exports, require) {
 (function() {
   var detective, path, through, trackPaths, wrapCode;
@@ -95,7 +95,7 @@ define('converters/amdify', ['module', 'exports', 'require'], function(module, e
     resolvedVars = ['module', 'exports', 'require'];
     code = ("define('" + moduleName + "', [" + (resolvedModules.map(function(el) {
       return "'" + el + "'";
-    }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + code + "\n}\n";
+    }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + code + "\n});\n";
     return code;
   };
 
@@ -147,10 +147,10 @@ define('converters/amdify', ['module', 'exports', 'require'], function(module, e
 
 }).call(this);
 
-}
+});
 define('main', ['module', 'exports', 'require', 'converters/amdify', 'converters/optimize'], function(module, exports, require) {
 (function() {
-  var amdify, fast, optimize, process;
+  var Pipe, amdify, fast, optimize;
 
   fast = require('coffee-fast-compile');
 
@@ -158,20 +158,39 @@ define('main', ['module', 'exports', 'require', 'converters/amdify', 'converters
 
   optimize = require('converters/optimize');
 
-  process = function(coffeeStream, pack, cb) {
-    var amdifyPipe, optimizePipe;
+  Pipe = (function() {
+    function Pipe(dir, output, pack) {
+      this.dir = dir;
+      this.output = output;
+      this.pack = pack;
+    }
 
-    amdifyPipe = amdify('./src');
-    optimizePipe = optimize(pack, cb);
-    return coffeeStream.pipe(amdifyPipe).pipe(optimizePipe);
-  };
+    Pipe.prototype.launchPipe = function(userPipe, cb) {
+      var amdifyPipe, coffeePipe, optimizePipe, pipe, pipes;
+
+      amdifyPipe = amdify(this.dir);
+      optimizePipe = optimize(this.pack, this.cb);
+      coffeePipe = fast.watch(this.dir, this.output);
+      pipes = [coffeePipe, userPipe, amdifyPipe, optimizePipe].compact();
+      pipe = pipes.shift();
+      return pipes.each(function(el) {
+        return pipe = pipe.pipe(el);
+      });
+    };
+
+    return Pipe;
+
+  })();
 
   module.exports = {
-    watch: function(dir, output, pack, cb) {
-      return process(fast.watch(dir, output), pack, cb);
+    watch: function(dir, output, pack, cb, userPipe) {
+      var pipe;
+
+      pipe = new Pipe(dir, output, pack);
+      return pipe.launchPipe(userPipe, cb);
     }
   };
 
 }).call(this);
 
-}
+});
