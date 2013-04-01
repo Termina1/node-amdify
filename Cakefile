@@ -5,7 +5,8 @@ fs = require 'fs'
 TEST_COMMAND = "#{__dirname}/node_modules/mocha/bin/mocha"
 
 task 'watch', ->
-  amdify.watch './src', './lib', './package.js', -> console.log 'compiled'
+  converter = amdify.watch './src', './lib', './package.js'
+  converter.launchPipe false, -> console.log 'compiled'
 
 launch = (cmd, options=[], callback) ->
   app = spawn cmd, options

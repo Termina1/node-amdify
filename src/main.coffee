@@ -8,14 +8,13 @@ class Pipe
     
   launchPipe: (userPipe, cb) ->
     amdifyPipe = amdify @dir
-    optimizePipe = optimize @pack, @cb
+    optimizePipe = optimize @pack, cb
     coffeePipe = fast.watch @dir, @output
-    pipes = [coffeePipe, userPipe, amdifyPipe, optimizePipe].compact()
+    pipes = [coffeePipe, userPipe, amdifyPipe, optimizePipe].compact true
     pipe = pipes.shift()
     pipes.each (el) -> pipe = pipe.pipe el
 
 
 module.exports = 
-  watch: (dir, output, pack, cb, userPipe) ->
-    pipe = new Pipe(dir, output, pack)
-    pipe.launchPipe userPipe, cb
+  watch: (dir, output, pack) ->
+    new Pipe(dir, output, pack)

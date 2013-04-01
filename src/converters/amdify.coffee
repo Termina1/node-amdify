@@ -14,9 +14,14 @@ trackPaths = (baseDir, data) ->
   baseDir = path.resolve(baseDir)
   modulePath = path.relative baseDir, path.dirname data.file
   moduleName = path.join modulePath, path.basename data.file, path.extname data.file
-  resolved = detective(data.code).filter (el) -> el and el.match(/^(.\/|..\/)/)
+  resolved = detective(data.code)
   code = data.code
-  resolvedModules = resolved.map (el) -> path.normalize path.relative baseDir, path.join baseDir, modulePath, el
+  resolvedModules = resolved.map (el) -> 
+    if el and el.match(/^(.\/|..\/)/)
+      path.normalize path.relative baseDir, path.join baseDir, modulePath, el
+    else
+      el
+      
   for el, i in resolved
     code = code.replace el, resolvedModules[i]
   resolvedModules: resolvedModules, moduleName: moduleName, code: code
