@@ -1,33 +1,11 @@
 amdify = require '../../src/converters/amdify'
+fs = require 'fs'
 
-testCode = "(function() {
-  var amdify, fast, optimize, process, tested;
+testCode = fs.readFileSync('test/fixtures/source.js').toString()
 
-  fast = require('coffee-fast-compile');
+resultCode = fs.readFileSync('test/fixtures/result.js').toString()
 
-  amdify = require('./converters/amdify');
-
-  tested = require('../tested');
-
-
-  optimize = require('./converters/optimize');
-
-  process = function(coffeeStream, pack) {
-    var amdifyPipe, optimizePipe;
-
-    amdifyPipe = amdify('./src');
-    optimizePipe = optimize(pack);
-    return coffeeStream.pipe(amdifyPipe).pipe(optimizePipe);
-  };
-
-  module.exports = {
-    watch: function(dir, output, pack) {
-      return process(fast.watch(dir, output), pack);
-    }
-  };
-
-}).call(this);
-"
+normalizeCode = fs.readFileSync('test/fixtures/normalized.js').toString()
 
 testData = 
   code: testCode,
@@ -36,8 +14,26 @@ testData =
 describe 'amdify', ->
 
   it "test path tracking", ->
+    stub = sinon.stub amdify, 'normalizeCode'
     results = amdify.trackPaths "./src", testData
     results.should.eql 
       resolvedModules: ['coffee-fast-compile', 'more/converters/amdify', 'tested', 'more/converters/optimize']
       moduleName: 'more/main'
       code: results.code
+    stub.called.should.be.true
+    do stub.restore
+
+  it "test path wrapCode", ->
+    data = 
+      resolvedModules: ['coffee-fast-compile', 'more/converters/amdify', 'tested', 'more/converters/optimize']
+      moduleName: 'more/main'
+      code: testCode
+    results = amdify.wrapCode data
+    results.should.eql resultCode
+
+  it "normalizes code", ->
+    resolved = ['coffee-fast-compile', './converters/amdify', '../tested', './converters/optimize']
+    resolvedModules = ['coffee-fast-compile', 'more/converters/amdify', 'tested', 'more/converters/optimize']
+    code = amdify.normalizeCode testCode, resolved, resolvedModules
+    code.should.eql normalizeCode
+      

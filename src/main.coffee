@@ -1,5 +1,5 @@
 fast = require 'coffee-fast-compile'
-amdify = require('./converters/amdify').getPipe
+amdify = require('./converters/amdify')
 optimize = require './converters/optimize'
 
 class Pipe
@@ -7,7 +7,7 @@ class Pipe
   constructor: (@dir, @pack, @output, @watch = false) ->
     
   launchPipe: (userPipe, cb) ->
-    amdifyPipe = amdify @dir
+    amdifyPipe = amdify.getPipe @dir
     optimizePipe = optimize @pack, cb
     coffeePipe = if @watch then fast.watch @dir, @output else fast.build @dir, @output
     pipes = [coffeePipe, userPipe, amdifyPipe, optimizePipe].compact true

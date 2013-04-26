@@ -79,7 +79,7 @@ define('converters/optimize', ['module', 'exports', 'require', 'through', 'sugar
 });
 define('converters/amdify', ['module', 'exports', 'require', 'through', 'detective', 'path'], function(module, exports, require) {
 (function() {
-  var detective, path, through, trackPaths, wrapCode;
+  var amdify, detective, path, through;
 
   through = require('through');
 
@@ -87,54 +87,61 @@ define('converters/amdify', ['module', 'exports', 'require', 'through', 'detecti
 
   path = require('path');
 
-  wrapCode = function(data, _arg) {
-    var code, moduleName, resolvedModules, resolvedVars;
+  amdify = {
+    wrapCode: function(_arg) {
+      var code, moduleName, resolvedModules, resolvedVars;
 
-    resolvedVars = _arg.resolvedVars, resolvedModules = _arg.resolvedModules, moduleName = _arg.moduleName, code = _arg.code;
-    resolvedModules = ['module', 'exports', 'require'].concat(resolvedModules);
-    resolvedVars = ['module', 'exports', 'require'];
-    code = ("define('" + moduleName + "', [" + (resolvedModules.map(function(el) {
-      return "'" + el + "'";
-    }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + code + "\n});\n";
-    return code;
-  };
+      resolvedVars = _arg.resolvedVars, resolvedModules = _arg.resolvedModules, moduleName = _arg.moduleName, code = _arg.code;
+      resolvedModules = ['module', 'exports', 'require'].concat(resolvedModules);
+      resolvedVars = ['module', 'exports', 'require'];
+      code = ("define('" + moduleName + "', [" + (resolvedModules.map(function(el) {
+        return "'" + el + "'";
+      }).join(', ')) + "], function(" + (resolvedVars.join(', ')) + ") {\n") + code + "\n});\n";
+      return code;
+    },
+    normalizeCode: function(code, resolved, resolvedModules) {
+      var el, i, _i, _len;
 
-  trackPaths = function(baseDir, data) {
-    var code, el, i, moduleName, modulePath, resolved, resolvedModules, _i, _len;
-
-    baseDir = path.resolve(baseDir);
-    modulePath = path.relative(baseDir, path.dirname(data.file));
-    moduleName = path.join(modulePath, path.basename(data.file, path.extname(data.file)));
-    resolved = detective(data.code);
-    code = data.code;
-    resolvedModules = resolved.map(function(el) {
-      if (el && el.match(/^(.\/|..\/)/)) {
-        return path.normalize(path.relative(baseDir, path.join(baseDir, modulePath, el)));
-      } else {
-        return el;
+      for (i = _i = 0, _len = resolved.length; _i < _len; i = ++_i) {
+        el = resolved[i];
+        code = code.replace(el, resolvedModules[i]);
       }
-    });
-    for (i = _i = 0, _len = resolved.length; _i < _len; i = ++_i) {
-      el = resolved[i];
-      code = code.replace(el, resolvedModules[i]);
-    }
-    return {
-      resolvedModules: resolvedModules,
-      moduleName: moduleName,
-      code: code
-    };
-  };
+      return code;
+    },
+    trackPaths: function(baseDir, data) {
+      var code, moduleName, modulePath, resolved, resolvedModules;
 
-  module.exports = {
+      baseDir = path.resolve(baseDir);
+      modulePath = path.relative(baseDir, path.dirname(data.file));
+      moduleName = path.join(modulePath, path.basename(data.file, path.extname(data.file)));
+      resolved = detective(data.code);
+      code = data.code;
+      resolvedModules = resolved.map(function(el) {
+        if (el && el.match(/^(.\/|..\/)/)) {
+          return path.normalize(path.relative(baseDir, path.join(baseDir, modulePath, el)));
+        } else {
+          return el;
+        }
+      });
+      code = this.normalizeCode(code, resolved, resolvedModules);
+      return {
+        resolvedModules: resolvedModules,
+        moduleName: moduleName,
+        code: code
+      };
+    },
     getPipe: function(baseDir) {
+      var self;
+
+      self = this;
       return through(function(data) {
         var result, wrappedCode;
 
         if (data === 'compiled') {
           return this.queue(data);
         } else {
-          result = trackPaths(baseDir, data);
-          wrappedCode = wrapCode(data, result);
+          result = self.trackPaths(baseDir, data);
+          wrappedCode = self.wrapCode(result);
           return this.queue({
             code: wrappedCode,
             module: result.moduleName,
@@ -142,10 +149,10 @@ define('converters/amdify', ['module', 'exports', 'require', 'through', 'detecti
           });
         }
       });
-    },
-    trackPaths: trackPaths,
-    wrapCode: wrapCode
+    }
   };
+
+  module.exports = amdify;
 
 }).call(this);
 
@@ -156,7 +163,7 @@ define('main', ['module', 'exports', 'require', 'coffee-fast-compile', 'converte
 
   fast = require('coffee-fast-compile');
 
-  amdify = require('converters/amdify').getPipe;
+  amdify = require('converters/amdify');
 
   optimize = require('converters/optimize');
 
@@ -171,7 +178,7 @@ define('main', ['module', 'exports', 'require', 'coffee-fast-compile', 'converte
     Pipe.prototype.launchPipe = function(userPipe, cb) {
       var amdifyPipe, coffeePipe, optimizePipe, pipe, pipes;
 
-      amdifyPipe = amdify(this.dir);
+      amdifyPipe = amdify.getPipe(this.dir);
       optimizePipe = optimize(this.pack, cb);
       coffeePipe = this.watch ? fast.watch(this.dir, this.output) : fast.build(this.dir, this.output);
       pipes = [coffeePipe, userPipe, amdifyPipe, optimizePipe].compact(true);
