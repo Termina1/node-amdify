@@ -4,7 +4,7 @@ optimize = require './converters/optimize'
 
 class Pipe
 
-  constructor: (@dir, @output, @pack) ->
+  constructor: (@dir, @pack, @output) ->
     
   launchPipe: (userPipe, cb) ->
     amdifyPipe = amdify @dir
@@ -16,5 +16,5 @@ class Pipe
 
 
 module.exports = 
-  watch: (dir, output, pack) ->
-    new Pipe(dir, output, pack)
+  watch: (dir, pack, output) ->
+    new Pipe(dir, pack, output)
