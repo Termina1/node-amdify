@@ -4,12 +4,12 @@ optimize = require './converters/optimize'
 
 class Pipe
 
-  constructor: (@dir, @pack, @output) ->
+  constructor: (@dir, @pack, @output, @watch = false) ->
     
   launchPipe: (userPipe, cb) ->
     amdifyPipe = amdify @dir
     optimizePipe = optimize @pack, cb
-    coffeePipe = fast.watch @dir, @output
+    coffeePipe = if @watch then fast.watch @dir, @output else fast.build @dir, @output
     pipes = [coffeePipe, userPipe, amdifyPipe, optimizePipe].compact true
     pipe = pipes.shift()
     pipes.each (el) -> pipe = pipe.pipe el
@@ -17,4 +17,7 @@ class Pipe
 
 module.exports = 
   watch: (dir, pack, output) ->
+    new Pipe(dir, pack, output, true)
+
+  build: (dir, pack, output) ->
     new Pipe(dir, pack, output)

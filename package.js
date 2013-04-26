@@ -161,10 +161,11 @@ define('main', ['module', 'exports', 'require', 'coffee-fast-compile', 'converte
   optimize = require('converters/optimize');
 
   Pipe = (function() {
-    function Pipe(dir, output, pack) {
+    function Pipe(dir, pack, output, watch) {
       this.dir = dir;
-      this.output = output;
       this.pack = pack;
+      this.output = output;
+      this.watch = watch != null ? watch : false;
     }
 
     Pipe.prototype.launchPipe = function(userPipe, cb) {
@@ -172,7 +173,7 @@ define('main', ['module', 'exports', 'require', 'coffee-fast-compile', 'converte
 
       amdifyPipe = amdify(this.dir);
       optimizePipe = optimize(this.pack, cb);
-      coffeePipe = fast.watch(this.dir, this.output);
+      coffeePipe = this.watch ? fast.watch(this.dir, this.output) : fast.build(this.dir, this.output);
       pipes = [coffeePipe, userPipe, amdifyPipe, optimizePipe].compact(true);
       pipe = pipes.shift();
       return pipes.each(function(el) {
@@ -185,8 +186,11 @@ define('main', ['module', 'exports', 'require', 'coffee-fast-compile', 'converte
   })();
 
   module.exports = {
-    watch: function(dir, output, pack) {
-      return new Pipe(dir, output, pack);
+    watch: function(dir, pack, output) {
+      return new Pipe(dir, pack, output, true);
+    },
+    build: function(dir, pack, output) {
+      return new Pipe(dir, pack, output);
     }
   };
 
