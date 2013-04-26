@@ -12,18 +12,15 @@
     "node": ">=0.6.1"
   },
   "devDependencies": {
-    "mocha": ">=0",
-    "chai": ">=0",
-    "sinon-chai": ">=0",
-    "node-promise": "*",
-    "detective": "*",
-    "sugar": "*",
-    "coffee-fast-compile": "*",
-    "through": "*",
-    "chai": "*",
-    "sinon": "*",
-    "sinon-chai": "*",
-    "findit": "*",
-    "coffee-script": "*"
+    "mocha": "1.x.x",
+    "chai": "2.x",
+    "sinon-chai": "2.x",
+    "node-promise": "0.5.x",
+    "detective": "2.0.0",
+    "sugar": ">= 1.3.8",
+    "coffee-fast-compile": "0.2.x",
+    "through": "2.2.x",
+    "chai": "1.5.x",
+    "sinon": "1.6.x"
   }
 }
