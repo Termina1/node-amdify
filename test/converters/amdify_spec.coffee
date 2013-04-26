@@ -38,6 +38,6 @@ describe 'amdify', ->
   it "test path tracking", ->
     results = amdify.trackPaths "./src", testData
     results.should.eql 
-      resolvedModules: ['more/converters/amdify', 'tested', 'more/converters/optimize']
-      resolvedVars: ['amdify', 'tested', 'optimize']
+      resolvedModules: ['coffee-fast-compile', 'more/converters/amdify', 'tested', 'more/converters/optimize']
       moduleName: 'more/main'
+      code: results.code

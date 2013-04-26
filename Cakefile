@@ -8,6 +8,10 @@ task 'watch', ->
   converter = amdify.watch './src', './package.js', './lib'
   converter.launchPipe false, -> console.log 'compiled'
 
+task 'build', ->
+  converter = amdify.build './src', './package.js', './lib'
+  converter.launchPipe false, -> console.log 'compiled'
+
 launch = (cmd, options=[], callback) ->
   app = spawn cmd, options
   app.stdout.pipe(process.stdout, end: false)
