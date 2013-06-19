@@ -11,7 +11,7 @@
   "engines": {
     "node": ">=0.6.1"
   },
-  "devDependencies": {
+  "dependencies": {
     "mocha": "1.x.x",
     "chai": "2.x",
     "sinon-chai": "2.x",
@@ -21,6 +21,8 @@
     "coffee-fast-compile": "0.2.x",
     "through": "2.2.x",
     "chai": "1.5.x",
-    "sinon": "1.6.x"
+    "sinon": "1.6.x",
+    "findit": "*",
+    "coffee-script": "1.6.x"
   }
 }

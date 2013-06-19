@@ -175,13 +175,13 @@ define('main', ['module', 'exports', 'require', 'coffee-fast-compile', 'converte
       this.watch = watch != null ? watch : false;
     }
 
-    Pipe.prototype.launchPipe = function(userPipe, cb) {
+    Pipe.prototype.launchPipe = function(cb, userPipe, userResultPipe) {
       var amdifyPipe, coffeePipe, optimizePipe, pipe, pipes;
 
       amdifyPipe = amdify.getPipe(this.dir);
       optimizePipe = optimize(this.pack, cb);
       coffeePipe = this.watch ? fast.watch(this.dir, this.output) : fast.build(this.dir, this.output);
-      pipes = [coffeePipe, userPipe, amdifyPipe, optimizePipe].compact(true);
+      pipes = [coffeePipe, userPipe, amdifyPipe, userResultPipe, optimizePipe].compact(true);
       pipe = pipes.shift();
       return pipes.each(function(el) {
         return pipe = pipe.pipe(el);

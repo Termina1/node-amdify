@@ -6,11 +6,11 @@ TEST_COMMAND = "#{__dirname}/node_modules/mocha/bin/mocha"
 
 task 'watch', ->
   converter = amdify.watch './src', './package.js', './lib'
-  converter.launchPipe false, -> console.log 'compiled'
+  converter.launchPipe -> console.log 'compiled'
 
 task 'build', ->
   converter = amdify.build './src', './package.js', './lib'
-  converter.launchPipe false, -> console.log 'compiled'
+  converter.launchPipe -> console.log 'compiled'
 
 launch = (cmd, options=[], callback) ->
   app = spawn cmd, options
@@ -20,7 +20,7 @@ launch = (cmd, options=[], callback) ->
 
 mocha = (options, callback) ->
   if typeof options is 'function'
-    callback = options 
+    callback = options
     options = []
 
   if typeof options is 'string'
@@ -29,7 +29,7 @@ mocha = (options, callback) ->
   files = []
   finder = require('findit').find './test'
   finder.on 'file', (file) -> files.push file if file.slice(-6) is 'coffee'
-  finder.on 'end', -> 
+  finder.on 'end', ->
     options = options.concat files
     launch TEST_COMMAND, options, callback
 
