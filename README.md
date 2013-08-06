@@ -25,7 +25,7 @@ but not converted files will be stored. Result value is ```Pipe``` class wich wi
 ```js
 amdify = require('node-amdify');
 
-var pipe = amdify.build('dir', 'result', 'output')
+var pipe = amdify.watch('dir', 'result', 'output')
 ```
 
 The same as ```build``` but it also watches ```dir``` for changes and recompiles changed files. Since all compiled files
