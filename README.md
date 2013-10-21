@@ -1,7 +1,7 @@
 # node-amdify
 
 This is yet another library that converts nodejs code to browser supported code. Actually, node-amdify doesn't know how
-to extract pacakge dependencies, which makes it less usefull than https://github.com/substack/node-browserify. 
+to extract package dependencies, which makes it less usefull than https://github.com/substack/node-browserify. 
 However, it serves to one more general purpose. It can convert CommonJS module definition style 
 to AMD https://github.com/amdjs/amdjs-api/wiki/AMD.
 
